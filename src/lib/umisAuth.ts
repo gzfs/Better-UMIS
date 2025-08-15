@@ -145,8 +145,13 @@ export const umisAuthService = {
 			console.log("Parsed response data:", data);
 
 			// Transform response to match our auth interface
+			const token = data.token || data.accessToken || data.access_token;
+			if (!token) {
+				throw new Error("No authentication token received from server");
+			}
+
 			return {
-				token: data.token || data.accessToken || data.access_token, // Handle different response formats
+				token,
 				user: {
 					id: data.userId || data.id || data.user_id || credentials.username,
 					username: credentials.username,
