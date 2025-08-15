@@ -21,4 +21,20 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/moodle-api': {
+        target: 'https://lms.snuchennai.edu.in',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/moodle-api/, ''),
+        secure: true,
+      },
+      '/umis-api': {
+        target: 'https://umisapi.tnega.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/umis-api/, ''),
+        secure: true,
+      },
+    },
+  },
 })
