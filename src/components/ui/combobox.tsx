@@ -39,7 +39,6 @@ export function Combobox({
 	className,
 }: ComboboxProps) {
 	const [open, setOpen] = React.useState(false);
-
 	const selectedOption = options.find((option) => option.value === value);
 
 	const handleSelect = (selectedValue: string) => {
@@ -53,7 +52,6 @@ export function Combobox({
 			<PopoverTrigger asChild>
 				<Button
 					variant="outline"
-					role="combobox"
 					aria-expanded={open}
 					className={cn("w-full justify-between", className)}
 					disabled={disabled}
@@ -69,14 +67,10 @@ export function Combobox({
 						<CommandEmpty>{emptyText}</CommandEmpty>
 						<CommandGroup>
 							{options.map((option) => (
-								<button
+								<CommandItem
 									key={option.value}
-									type="button"
-									onClick={() => {
-										console.log("Button clicked for:", option.label);
-										handleSelect(option.value);
-									}}
-									className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center"
+									value={option.label}
+									onSelect={() => handleSelect(option.value)}
 								>
 									<Check
 										className={cn(
@@ -85,7 +79,7 @@ export function Combobox({
 										)}
 									/>
 									{option.label}
-								</button>
+								</CommandItem>
 							))}
 						</CommandGroup>
 					</CommandList>
