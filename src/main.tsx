@@ -9,6 +9,19 @@ import { routeTree } from "./routeTree.gen";
 import "./styles.css";
 import reportWebVitals from "./reportWebVitals.ts";
 
+// Import API test suite for console access (development only)
+if (import.meta.env.DEV) {
+	import("./utils/apiTestSuite").then(({ APITestSuite }) => {
+		// Make test suite available globally for console testing
+		(window as any).APITestSuite = APITestSuite;
+		(window as any).runAPITests = async () => {
+			const testSuite = new APITestSuite();
+			return await testSuite.runAllTests();
+		};
+		console.log("🧪 API Test Suite loaded. Run `runAPITests()` in console to test all APIs.");
+	});
+}
+
 // Create a new query client
 const queryClient = new QueryClient({
 	defaultOptions: {
