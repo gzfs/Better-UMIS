@@ -116,9 +116,13 @@ export const TokenDashboard = () => {
 		try {
 			setRemovingToken(tokenId);
 			await removeToken(tokenId);
-			await fetchTokens(); // Refresh token list
+			// Remove token from local lists
+			setActiveTokens((prev) => prev.filter((t) => t.xata_id !== tokenId));
+			setExpiredTokens((prev) => prev.filter((t) => t.xata_id !== tokenId));
 		} catch (error) {
 			console.error("Failed to remove token:", error);
+			// On error, refresh the token list to ensure UI is in sync
+			await fetchTokens();
 		} finally {
 			setRemovingToken(null);
 		}

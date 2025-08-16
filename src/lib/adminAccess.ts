@@ -1,4 +1,5 @@
 const ADMIN_EMAILS = [
+	"vishalmurugan22110461@snuchennai.edu.in",
 	"priyadharshini22110101@snuchennai.edu.in",
 	"joshuabharathi22110022@snuchennai.edu.in",
 	"aditya22110133@snuchennai.edu.in",

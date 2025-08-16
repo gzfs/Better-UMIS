@@ -154,11 +154,16 @@ export const useTokenStore = create<TokenState>()(
 						set({ currentToken: null });
 					}
 
-					// Note: We don't call UMIS logout API or delete from Xata
-					// The token stays active for other users
+					// Delete token from Xata first
+					await deleteXataToken(tokenId);
+					console.log("Token deleted from Xata");
 
-					set({ isLoading: false });
-					console.log("Token removed from local state only");
+					// Remove token from local state
+					set((state) => ({
+						tokens: state.tokens.filter((t) => t.xata_id !== tokenId),
+						isLoading: false,
+					}));
+					console.log("Token removed from local state");
 				} catch (error) {
 					console.error("Failed to remove token from state:", error);
 					const errorMessage =
