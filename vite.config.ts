@@ -31,6 +31,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/umis-api/, ''),
         secure: true,
       },
+
     },
   },
 })

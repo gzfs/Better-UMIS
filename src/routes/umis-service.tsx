@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { UMISProtectedRoute } from "../components/UMISProtectedRoute";
-import { Button } from "../components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -49,8 +48,8 @@ function UMISServicePage() {
 											<p className="text-sm font-medium text-gray-500">
 												Token ID
 											</p>
-											<p className="text-sm font-mono text-xs">
-												{currentToken.id}
+											<p className="font-mono text-xs">
+												{currentToken.xata_id}
 											</p>
 										</div>
 										<div>
@@ -58,7 +57,7 @@ function UMISServicePage() {
 												Created
 											</p>
 											<p className="text-sm">
-												{new Date(currentToken.createdAt).toLocaleString()}
+												{new Date(currentToken.xata_createdat).toLocaleString()}
 											</p>
 										</div>
 										<div>
@@ -66,7 +65,7 @@ function UMISServicePage() {
 												Expires
 											</p>
 											<p className="text-sm">
-												{new Date(currentToken.expiresAt).toLocaleString()}
+												{new Date(currentToken.xata_createdat).toLocaleString()}
 											</p>
 										</div>
 									</div>

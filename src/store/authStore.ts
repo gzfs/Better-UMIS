@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { isAdminEmail } from "../lib/adminAccess";
 import { type LoginCredentials, type User, authService } from "../lib/auth";
+import { useTokenStore } from "./tokenStore";
 
 interface AuthState {
 	// State
@@ -9,12 +11,14 @@ interface AuthState {
 	isAuthenticated: boolean;
 	isLoading: boolean;
 	error: string | null;
+	isAdmin: boolean;
 
 	// Actions
 	login: (credentials: LoginCredentials) => Promise<void>;
-	logout: () => void;
+	logout: () => Promise<void>;
 	clearError: () => void;
 	setLoading: (loading: boolean) => void;
+	checkAdminStatus: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -26,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
 			isAuthenticated: false,
 			isLoading: false,
 			error: null,
+			isAdmin: false,
 
 			// Actions
 			login: async (credentials: LoginCredentials) => {
@@ -37,6 +42,9 @@ export const useAuthStore = create<AuthState>()(
 					// Store token in localStorage via authService
 					authService.setToken(response.token);
 
+					// Check if user is admin
+					const isAdmin = isAdminEmail(response.user.email);
+
 					// Update Zustand state
 					set({
 						user: response.user,
@@ -44,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
 						isAuthenticated: true,
 						isLoading: false,
 						error: null,
+						isAdmin,
 					});
 				} catch (error) {
 					const errorMessage =
@@ -54,23 +63,42 @@ export const useAuthStore = create<AuthState>()(
 						isAuthenticated: false,
 						isLoading: false,
 						error: errorMessage,
+						isAdmin: false,
 					});
 					throw error; // Re-throw for component handling
 				}
 			},
 
-			logout: () => {
-				// Remove token from localStorage
-				authService.removeToken();
+			logout: async () => {
+				try {
+					// Clean up tokens
+					const tokenStore = useTokenStore.getState();
+					await tokenStore.cleanup();
 
-				// Reset Zustand state
-				set({
-					user: null,
-					token: null,
-					isAuthenticated: false,
-					isLoading: false,
-					error: null,
-				});
+					// Remove token from localStorage
+					authService.removeToken();
+
+					// Reset Zustand state
+					set({
+						user: null,
+						token: null,
+						isAuthenticated: false,
+						isLoading: false,
+						error: null,
+						isAdmin: false,
+					});
+				} catch (error) {
+					console.error("Error during logout:", error);
+					// Still reset state even if cleanup fails
+					set({
+						user: null,
+						token: null,
+						isAuthenticated: false,
+						isLoading: false,
+						error: null,
+						isAdmin: false,
+					});
+				}
 			},
 
 			clearError: () => {
@@ -80,6 +108,11 @@ export const useAuthStore = create<AuthState>()(
 			setLoading: (loading: boolean) => {
 				set({ isLoading: loading });
 			},
+
+			checkAdminStatus: () => {
+				const { user } = get();
+				return user ? isAdminEmail(user.email) : false;
+			},
 		}),
 		{
 			name: "auth-storage", // localStorage key
@@ -87,6 +120,7 @@ export const useAuthStore = create<AuthState>()(
 				user: state.user,
 				token: state.token,
 				isAuthenticated: state.isAuthenticated,
+				isAdmin: state.isAdmin,
 			}),
 		},
 	),

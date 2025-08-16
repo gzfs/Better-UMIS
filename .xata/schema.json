@@ -1,0 +1,44 @@
+{
+    "tables": [
+        {
+            "name": "umis_tokens",
+            "columns": [
+                {
+                    "name": "username",
+                    "type": "string",
+                    "notNull": true
+                },
+                {
+                    "name": "token",
+                    "type": "string",
+                    "notNull": true,
+                    "unique": true
+                },
+                {
+                    "name": "is_active",
+                    "type": "bool",
+                    "notNull": true,
+                    "defaultValue": true
+                },
+                {
+                    "name": "xata_createdat",
+                    "type": "datetime",
+                    "notNull": true,
+                    "defaultValue": "now"
+                },
+                {
+                    "name": "xata_updatedat",
+                    "type": "datetime",
+                    "notNull": true,
+                    "defaultValue": "now"
+                },
+                {
+                    "name": "xata_version",
+                    "type": "int",
+                    "notNull": true,
+                    "defaultValue": 0
+                }
+            ]
+        }
+    ]
+}

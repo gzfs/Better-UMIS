@@ -1,0 +1,6 @@
+{
+  "databaseURL": "https://Vishal-DBS-s-workspace-ojg109.us-east-1.xata.sh/db/UMIS",
+  "codegen": {
+    "output": "src/lib/xata.codegen.ts"
+  }
+}

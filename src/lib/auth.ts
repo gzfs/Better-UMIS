@@ -7,6 +7,7 @@ export interface User {
 	id: string;
 	username: string;
 	fullname: string;
+	email: string;
 }
 
 export interface AuthResponse {
@@ -63,6 +64,9 @@ export const authService = {
 					id: profileData.userid.toString(),
 					username: profileData.username,
 					fullname: profileData.fullname,
+					email: profileData.username.includes("@")
+						? profileData.username
+						: `${profileData.username}@snuchennai.edu.in`, // Use existing email if present, otherwise construct it
 				},
 			};
 		} catch (error) {

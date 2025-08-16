@@ -27,8 +27,8 @@ export const UMISProtectedRoute = ({
 
 		if (requiredToken) {
 			// Check if the specific required token exists and is active
-			const token = tokens.find((t) => t.id === requiredToken);
-			if (!token || !token.isActive) {
+			const token = tokens.find((t) => t.xata_id === requiredToken);
+			if (!token || !token.is_active) {
 				navigate({ to: "/dashboard" });
 				return;
 			}
