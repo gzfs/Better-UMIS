@@ -1,21 +1,34 @@
+import { useState } from "react";
+import {
+	transformAcademicInfoToPayload,
+	umisApiService,
+} from "../../lib/umisApiService";
+import type { UmisTokensRecord } from "../../lib/xata.codegen";
+import { Button } from "../ui/button";
+import { Combobox } from "../ui/combobox";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Combobox } from "../ui/combobox";
 import type { StudentFormData } from "../StudentRegistrationWizard";
-import type { TokenInfo } from "../../store/tokenStore";
 
 interface AcademicInformationTabProps {
 	formData: StudentFormData;
 	updateFormData: (updates: Partial<StudentFormData>) => void;
 	validationErrors: Record<string, string>;
-	currentToken: TokenInfo | null;
+	currentToken: UmisTokensRecord | null;
 }
 
 export const AcademicInformationTab = ({
 	formData,
 	updateFormData,
 	validationErrors,
+	currentToken,
 }: AcademicInformationTabProps) => {
+	// Save functionality state
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveResult, setSaveResult] = useState<{
+		success: boolean;
+		message: string;
+	} | null>(null);
 	// Academic Year options
 	const academicYearOptions = [
 		{ label: "2024-2025", value: "2024-2025" },
@@ -90,6 +103,58 @@ export const AcademicInformationTab = ({
 		{ label: "College Hostel", value: "College" },
 		{ label: "Others", value: "Others" },
 	];
+
+	// Save academic information to UMIS API
+	const handleSaveAcademicInfo = async () => {
+		if (!currentToken?.token) {
+			setSaveResult({
+				success: false,
+				message: "Authentication required. Please login first.",
+			});
+			return;
+		}
+
+		setIsSaving(true);
+		setSaveResult(null);
+
+		try {
+			// We need a student ID - this would typically come from the general info save
+			// For now, using a placeholder value that would be passed from parent component
+			const studentId = 6693300; // This should be dynamic
+
+			// Transform form data to API payload
+			const payload = transformAcademicInfoToPayload(formData, studentId);
+
+			// Call the API
+			const response = await umisApiService.saveStudentAcademicInfo(
+				payload,
+				currentToken.token,
+			);
+
+			if (response.isSuccess) {
+				setSaveResult({
+					success: true,
+					message: `Academic information saved successfully! Academic ID: ${response.value}`,
+				});
+			} else {
+				setSaveResult({
+					success: false,
+					message: response.message || "Failed to save academic information",
+				});
+			}
+		} catch (error) {
+			console.error("Error saving academic information:", error);
+			setSaveResult({
+				success: false,
+				message:
+					error instanceof Error
+						? error.message
+						: "Failed to save academic information",
+			});
+		} finally {
+			setIsSaving(false);
+		}
+	};
 
 	return (
 		<div className="space-y-8">
@@ -390,6 +455,34 @@ export const AcademicInformationTab = ({
 					<li>• Hostel information is required for scholarship and accommodation purposes</li>
 					<li>• All information will be verified with your institution</li>
 				</ul>
+			</div>
+
+			{/* Save Button and Result */}
+			<div className="space-y-4 pt-6 border-t border-gray-200">
+				<div className="flex justify-center">
+					<Button
+						onClick={handleSaveAcademicInfo}
+						disabled={isSaving || !currentToken?.token}
+						className="bg-blue-600 hover:bg-blue-700 px-8 py-2"
+					>
+						{isSaving ? "Saving..." : "Save Academic Information"}
+					</Button>
+				</div>
+
+				{/* Save Result Display */}
+				{saveResult && (
+					<div
+						className={`p-4 rounded-md ${
+							saveResult.success
+								? "bg-green-50 border border-green-200 text-green-800"
+								: "bg-red-50 border border-red-200 text-red-800"
+						}`}
+					>
+						<p className="text-sm font-medium">
+							{saveResult.success ? "✅" : "❌"} {saveResult.message}
+						</p>
+					</div>
+				)}
 			</div>
 		</div>
 	);

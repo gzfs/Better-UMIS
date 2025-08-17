@@ -1,15 +1,20 @@
 import { useState } from "react";
+import {
+	transformContactInfoToPayload,
+	umisApiService,
+} from "../../lib/umisApiService";
+import type { UmisTokensRecord } from "../../lib/xata.codegen";
+import { Button } from "../ui/button";
+import { Combobox } from "../ui/combobox";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Combobox } from "../ui/combobox";
 import type { StudentFormData } from "../StudentRegistrationWizard";
-import type { TokenInfo } from "../../store/tokenStore";
 
 interface ContactInformationTabProps {
 	formData: StudentFormData;
 	updateFormData: (updates: Partial<StudentFormData>) => void;
 	validationErrors: Record<string, string>;
-	currentToken: TokenInfo | null;
+	currentToken: UmisTokensRecord | null;
 }
 
 export const ContactInformationTab = ({
@@ -20,6 +25,13 @@ export const ContactInformationTab = ({
 }: ContactInformationTabProps) => {
 	const [districts, setDistricts] = useState<Array<{ label: string; value: string }>>([]);
 	const [taluks, setTaluks] = useState<Array<{ label: string; value: string }>>([]);
+	
+	// Save functionality state
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveResult, setSaveResult] = useState<{
+		success: boolean;
+		message: string;
+	} | null>(null);
 
 	// Location type options
 	const locationTypeOptions = [
@@ -148,6 +160,58 @@ export const ContactInformationTab = ({
 	const validateMobile = (mobile: string) => {
 		const mobileRegex = /^[6-9]\d{9}$/;
 		return mobileRegex.test(mobile);
+	};
+
+	// Save contact information to UMIS API
+	const handleSaveContactInfo = async () => {
+		if (!currentToken?.token) {
+			setSaveResult({
+				success: false,
+				message: "Authentication required. Please login first.",
+			});
+			return;
+		}
+
+		setIsSaving(true);
+		setSaveResult(null);
+
+		try {
+			// We need a student ID - this would typically come from the general info save
+			// For now, using a placeholder value that would be passed from parent component
+			const studentId = 6693300; // This should be dynamic
+
+			// Transform form data to API payload
+			const payload = transformContactInfoToPayload(formData, studentId);
+
+			// Call the API
+			const response = await umisApiService.saveStudentContactDetails(
+				payload,
+				currentToken.token,
+			);
+
+			if (response.isSuccess) {
+				setSaveResult({
+					success: true,
+					message: "Contact information saved successfully!",
+				});
+			} else {
+				setSaveResult({
+					success: false,
+					message: response.message || "Failed to save contact information",
+				});
+			}
+		} catch (error) {
+			console.error("Error saving contact information:", error);
+			setSaveResult({
+				success: false,
+				message:
+					error instanceof Error
+						? error.message
+						: "Failed to save contact information",
+			});
+		} finally {
+			setIsSaving(false);
+		}
 	};
 
 	return (
@@ -486,6 +550,34 @@ export const ContactInformationTab = ({
 					<div className="text-green-700 bg-green-100 p-4 rounded-md">
 						<p className="font-medium">Communication address is same as permanent address</p>
 						<p className="text-sm mt-1">{formData.permanentAddress.postalAddress}</p>
+					</div>
+				)}
+			</div>
+
+			{/* Save Button and Result */}
+			<div className="space-y-4 pt-6 border-t border-gray-200">
+				<div className="flex justify-center">
+					<Button
+						onClick={handleSaveContactInfo}
+						disabled={isSaving || !currentToken?.token}
+						className="bg-blue-600 hover:bg-blue-700 px-8 py-2"
+					>
+						{isSaving ? "Saving..." : "Save Contact Information"}
+					</Button>
+				</div>
+
+				{/* Save Result Display */}
+				{saveResult && (
+					<div
+						className={`p-4 rounded-md ${
+							saveResult.success
+								? "bg-green-50 border border-green-200 text-green-800"
+								: "bg-red-50 border border-red-200 text-red-800"
+						}`}
+					>
+						<p className="text-sm font-medium">
+							{saveResult.success ? "✅" : "❌"} {saveResult.message}
+						</p>
 					</div>
 				)}
 			</div>

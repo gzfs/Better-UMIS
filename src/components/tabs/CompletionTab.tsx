@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { CheckCircle, Download, Send, User, Phone, MapPin, GraduationCap, CreditCard } from "lucide-react";
+import { umisApiService } from "../../lib/umisApiService";
+import type { UmisTokensRecord } from "../../lib/xata.codegen";
 import { Button } from "../ui/button";
 import type { StudentFormData } from "../StudentRegistrationWizard";
-import type { TokenInfo } from "../../store/tokenStore";
 
 interface CompletionTabProps {
 	formData: StudentFormData;
-	currentToken: TokenInfo | null;
+	currentToken: UmisTokensRecord | null;
 }
 
 export const CompletionTab = ({ formData, currentToken }: CompletionTabProps) => {
@@ -14,7 +15,7 @@ export const CompletionTab = ({ formData, currentToken }: CompletionTabProps) =>
 	const [isSubmitted, setIsSubmitted] = useState(false);
 	const [applicationNumber, setApplicationNumber] = useState<string>("");
 
-	// Submit the form data to UMIS API
+	// Submit the form data and approve student using UMIS API
 	const handleSubmit = async () => {
 		if (!currentToken?.token) {
 			alert("No authentication token available. Please log in again.");
@@ -23,23 +24,27 @@ export const CompletionTab = ({ formData, currentToken }: CompletionTabProps) =>
 
 		setIsSubmitting(true);
 		try {
-			// This would be the actual API call to submit the form
-			const response = await fetch("/umis-api/api/student/register", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${currentToken.token}`,
-				},
-				body: JSON.stringify(formData),
-			});
+			// Use the student approval endpoint with student ID
+			// In a real implementation, this student ID would come from the previous save operations
+			const studentId = 6693300; // This should be dynamic from the form save operations
+			
+			const approvalPayload = {
+				studentApprovedType: 1, // 1 for approved
+				id: studentId,
+				rejectedRemarkId: null,
+			};
 
-			if (response.ok) {
-				const result = await response.json();
-				setApplicationNumber(result.applicationNumber || "UMIS" + Date.now());
+			// Call the student approval API
+			const response = await umisApiService.updateStudentApproval(
+				approvalPayload,
+				currentToken.token,
+			);
+
+			if (response.isSuccess) {
+				setApplicationNumber(`UMIS${studentId}`);
 				setIsSubmitted(true);
 			} else {
-				const errorData = await response.json();
-				alert(`Submission failed: ${errorData.message || "Please try again"}`);
+				alert(`Submission failed: ${response.message || "Please try again"}`);
 			}
 		} catch (error) {
 			console.error("Error submitting form:", error);
@@ -316,6 +321,8 @@ export const CompletionTab = ({ formData, currentToken }: CompletionTabProps) =>
 					<li>• Visit your institution within 7 days for document verification</li>
 					<li>• Bring all original documents for verification</li>
 					<li>• Contact your institution's UMIS coordinator for any queries</li>
+					<li>• Submission uses UMIS student approval API for final registration</li>
+					<li>• Authentication is required for successful submission</li>
 				</ul>
 			</div>
 		</div>

@@ -1,20 +1,22 @@
 import { useState } from "react";
+import { umisApiService } from "../../lib/umisApiService";
+import type { UmisTokensRecord } from "../../lib/xata.codegen";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import type { StudentFormData } from "../StudentRegistrationWizard";
-import type { TokenInfo } from "../../store/tokenStore";
 
 interface BankInformationTabProps {
 	formData: StudentFormData;
 	updateFormData: (updates: Partial<StudentFormData>) => void;
 	validationErrors: Record<string, string>;
-	currentToken: TokenInfo | null;
+	currentToken: UmisTokensRecord | null;
 }
 
 export const BankInformationTab = ({
 	formData,
 	updateFormData,
 	validationErrors,
+	currentToken,
 }: BankInformationTabProps) => {
 	const [ifscValidation, setIfscValidation] = useState<{
 		isValid: boolean;
@@ -39,21 +41,30 @@ export const BankInformationTab = ({
 		return accountRegex.test(accountNumber);
 	};
 
-	// Fetch bank details using IFSC code
+	// Fetch bank details using IFSC code from UMIS API
 	const fetchBankDetails = async (ifscCode: string) => {
 		if (!validateIFSC(ifscCode)) {
 			setIfscValidation({ isValid: false, bankDetails: null, isLoading: false });
 			return;
 		}
 
+		if (!currentToken?.token) {
+			setIfscValidation({ isValid: false, bankDetails: null, isLoading: false });
+			console.error("Authentication token required for IFSC lookup");
+			return;
+		}
+
 		setIfscValidation(prev => ({ ...prev, isLoading: true }));
 
 		try {
-			// Using a public IFSC API (replace with your preferred API)
-			const response = await fetch(`https://ifsc.razorpay.com/${ifscCode}`);
-			
-			if (response.ok) {
-				const bankDetails = await response.json();
+			// Use UMIS API for IFSC lookup
+			const bankBranches = await umisApiService.getBankBranchByIFSC(
+				ifscCode,
+				currentToken.token,
+			);
+
+			if (bankBranches.length > 0) {
+				const bankDetails = bankBranches[0]; // Take the first result
 				setIfscValidation({
 					isValid: true,
 					bankDetails,
@@ -62,9 +73,9 @@ export const BankInformationTab = ({
 
 				// Auto-fill bank name and branch if available
 				updateFormData({
-					bankName: bankDetails.BANK || "",
-					bankBranch: bankDetails.BRANCH || "",
-					city: bankDetails.CITY || "",
+					bankName: bankDetails.bankName || "",
+					bankBranch: bankDetails.name || "",
+					city: bankDetails.cityName || "",
 				});
 			} else {
 				setIfscValidation({
@@ -108,10 +119,15 @@ export const BankInformationTab = ({
 					<div className="text-yellow-600 text-xl">⚠️</div>
 					<div>
 						<h4 className="font-medium text-yellow-800 mb-1">Important Notice</h4>
-						<p className="text-sm text-yellow-700">
+						<p className="text-sm text-yellow-700 mb-2">
 							Ensure that the bank account belongs to the student or their parent/guardian. 
 							This account will be used for all financial transactions including scholarships, fee refunds, etc.
 						</p>
+						{!currentToken?.token && (
+							<p className="text-sm text-yellow-700 font-medium">
+								⚠️ Authentication required for IFSC validation - Please login first.
+							</p>
+						)}
 					</div>
 				</div>
 			</div>
@@ -269,27 +285,27 @@ export const BankInformationTab = ({
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
 							<div>
 								<span className="font-medium text-gray-600">Bank:</span>
-								<span className="ml-2">{ifscValidation.bankDetails.BANK}</span>
+								<span className="ml-2">{ifscValidation.bankDetails.bankName}</span>
 							</div>
 							<div>
 								<span className="font-medium text-gray-600">Branch:</span>
-								<span className="ml-2">{ifscValidation.bankDetails.BRANCH}</span>
+								<span className="ml-2">{ifscValidation.bankDetails.name}</span>
 							</div>
 							<div>
 								<span className="font-medium text-gray-600">Address:</span>
-								<span className="ml-2">{ifscValidation.bankDetails.ADDRESS}</span>
+								<span className="ml-2">{ifscValidation.bankDetails.address}</span>
 							</div>
 							<div>
 								<span className="font-medium text-gray-600">City:</span>
-								<span className="ml-2">{ifscValidation.bankDetails.CITY}</span>
+								<span className="ml-2">{ifscValidation.bankDetails.cityName}</span>
 							</div>
 							<div>
-								<span className="font-medium text-gray-600">State:</span>
-								<span className="ml-2">{ifscValidation.bankDetails.STATE}</span>
+								<span className="font-medium text-gray-600">IFSC:</span>
+								<span className="ml-2">{ifscValidation.bankDetails.ifsc}</span>
 							</div>
 							<div>
-								<span className="font-medium text-gray-600">Contact:</span>
-								<span className="ml-2">{ifscValidation.bankDetails.CONTACT || 'N/A'}</span>
+								<span className="font-medium text-gray-600">Bank ID:</span>
+								<span className="ml-2">{ifscValidation.bankDetails.bankId}</span>
 							</div>
 						</div>
 					</div>
@@ -337,6 +353,8 @@ export const BankInformationTab = ({
 					<li>• This account will be used for all financial transactions</li>
 					<li>• Joint accounts are acceptable if the student is one of the account holders</li>
 					<li>• Keep your bank passbook/statement ready for verification</li>
+					<li>• IFSC validation uses UMIS database for accurate bank information</li>
+					<li>• Authentication is required for IFSC lookup functionality</li>
 				</ul>
 			</div>
 		</div>
