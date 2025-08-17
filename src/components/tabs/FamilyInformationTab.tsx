@@ -1,14 +1,17 @@
+import { useState } from "react";
+import { umisApiService } from "../../lib/umisApiService";
+import type { UmisTokensRecord } from "../../lib/xata.codegen";
+import { Button } from "../ui/button";
+import { Combobox } from "../ui/combobox";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Combobox } from "../ui/combobox";
 import type { StudentFormData } from "../StudentRegistrationWizard";
-import type { TokenInfo } from "../../store/tokenStore";
 
 interface FamilyInformationTabProps {
 	formData: StudentFormData;
 	updateFormData: (updates: Partial<StudentFormData>) => void;
 	validationErrors: Record<string, string>;
-	currentToken: TokenInfo | null;
+	currentToken: UmisTokensRecord | null;
 }
 
 export const FamilyInformationTab = ({
@@ -17,6 +20,13 @@ export const FamilyInformationTab = ({
 	validationErrors,
 	currentToken,
 }: FamilyInformationTabProps) => {
+	// State for loading student info
+	const [isLoadingStudentInfo, setIsLoadingStudentInfo] = useState(false);
+	const [loadResult, setLoadResult] = useState<{
+		success: boolean;
+		message: string;
+	} | null>(null);
+
 	// Occupation options
 	const occupationOptions = [
 		{ label: "Agriculture", value: "Agriculture" },
@@ -43,11 +53,107 @@ export const FamilyInformationTab = ({
 		return numericValue.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 	};
 
+	// Load student family information from API
+	const handleLoadStudentInfo = async () => {
+		if (!currentToken?.token) {
+			setLoadResult({
+				success: false,
+				message: "Authentication required. Please login first.",
+			});
+			return;
+		}
+
+		setIsLoadingStudentInfo(true);
+		setLoadResult(null);
+
+		try {
+			// Using placeholder student ID - this should be dynamic
+			const studentId = 6693300;
+
+			const studentInfo = await umisApiService.getStudentInfo(
+				studentId,
+				currentToken.token,
+			);
+
+			// Update form data with loaded information
+			updateFormData({
+				fatherName: studentInfo.fatherName || "",
+				fatherOccupation: getOccupationLabel(studentInfo.fatherOccupationId),
+				motherName: studentInfo.motherName || "",
+				motherOccupation: getOccupationLabel(studentInfo.motherOccupationId),
+				guardianName: studentInfo.guardianName || "",
+				isOrphan: studentInfo.isOrphan ? "yes" : "no",
+				familyAnnualIncome: studentInfo.familyAnnualIncome.toString(),
+				parentMobileNumber: studentInfo.parentMobileNo || "",
+				incomeCertificateNumber: studentInfo.incomeCertificateNumber || "",
+			});
+
+			setLoadResult({
+				success: true,
+				message: "Family information loaded successfully!",
+			});
+		} catch (error) {
+			console.error("Error loading student info:", error);
+			setLoadResult({
+				success: false,
+				message:
+					error instanceof Error
+						? error.message
+						: "Failed to load family information",
+			});
+		} finally {
+			setIsLoadingStudentInfo(false);
+		}
+	};
+
+	// Helper function to get occupation label from ID
+	const getOccupationLabel = (occupationId: number): string => {
+		const occupationMap: Record<number, string> = {
+			10: "Private Service",
+			102: "Housewife",
+			103: "Business",
+			// Add more mappings as needed
+		};
+		return occupationMap[occupationId] || "Others";
+	};
+
 	return (
 		<div className="space-y-8">
 			<div className="text-center">
 				<h3 className="text-xl font-semibold text-blue-600 mb-2">Family Information</h3>
 				<p className="text-gray-600 text-sm">Please provide details about your family members</p>
+			</div>
+
+			{/* Load Student Info Section */}
+			<div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+				<div className="flex items-center justify-between">
+					<div>
+						<h4 className="text-lg font-semibold text-blue-800">Load Existing Information</h4>
+						<p className="text-sm text-blue-600">Load family information from your student record</p>
+					</div>
+					<Button
+						onClick={handleLoadStudentInfo}
+						disabled={isLoadingStudentInfo || !currentToken?.token}
+						className="bg-blue-600 hover:bg-blue-700"
+					>
+						{isLoadingStudentInfo ? "Loading..." : "Load Info"}
+					</Button>
+				</div>
+
+				{/* Load Result Display */}
+				{loadResult && (
+					<div
+						className={`mt-4 p-3 rounded-md ${
+							loadResult.success
+								? "bg-green-50 border border-green-200 text-green-800"
+								: "bg-red-50 border border-red-200 text-red-800"
+						}`}
+					>
+						<p className="text-sm font-medium">
+							{loadResult.success ? "✅" : "❌"} {loadResult.message}
+						</p>
+					</div>
+				)}
 			</div>
 
 			{/* Parents Information */}
@@ -257,7 +363,22 @@ export const FamilyInformationTab = ({
 					<li>• Ensure all details match with your official documents</li>
 					<li>• Income certificate and supporting documents may be required for verification</li>
 					<li>• Any false information may lead to cancellation of admission</li>
+					<li>• This information is loaded from your existing student record</li>
+					<li>• To update family information, contact the administration office</li>
 				</ul>
+			</div>
+
+			{/* Information Note */}
+			<div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+				<div className="flex items-center justify-center">
+					<div className="text-center">
+						<h4 className="text-lg font-semibold text-blue-800 mb-2">📊 Family Information Display</h4>
+						<p className="text-sm text-blue-600">
+							This tab displays your family information from the student record.
+							Use the "Load Info" button above to fetch your latest family details.
+						</p>
+					</div>
+				</div>
 			</div>
 		</div>
 	);

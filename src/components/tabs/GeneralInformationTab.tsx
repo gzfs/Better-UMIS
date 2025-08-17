@@ -1,6 +1,10 @@
 import forge from "node-forge";
 import { useEffect, useState } from "react";
 import type { UmisTokensRecord } from "../../lib/xata.codegen";
+import {
+	transformGeneralInfoToPayload,
+	umisApiService,
+} from "../../lib/umisApiService";
 import type { StudentFormData } from "../StudentRegistrationWizard";
 import { Button } from "../ui/button";
 import { Combobox } from "../ui/combobox";
@@ -96,6 +100,13 @@ export const GeneralInformationTab = ({
 		pinCode: string;
 		location: string;
 		photoBase64String: string;
+	} | null>(null);
+
+	// Save functionality state
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveResult, setSaveResult] = useState<{
+		success: boolean;
+		message: string;
 	} | null>(null);
 
 	// Public key for RSA encryption
@@ -544,6 +555,54 @@ AgMBAAE=
 	const handleCommunityChange = (value: string) => {
 		updateFormData({ community: value, caste: "" });
 		fetchCasteList(value);
+	};
+
+	// Save general information to UMIS API
+	const handleSaveGeneralInfo = async () => {
+		if (!currentToken?.token) {
+			setSaveResult({
+				success: false,
+				message: "Authentication required. Please login first.",
+			});
+			return;
+		}
+
+		setIsSaving(true);
+		setSaveResult(null);
+
+		try {
+			// Transform form data to API payload
+			const payload = transformGeneralInfoToPayload(formData);
+
+			// Call the API
+			const response = await umisApiService.saveOrUpdateGeneralInformation(
+				payload,
+				currentToken.token,
+			);
+
+			if (response.isSuccess) {
+				setSaveResult({
+					success: true,
+					message: `General information saved successfully! Student ID: ${response.value}`,
+				});
+			} else {
+				setSaveResult({
+					success: false,
+					message: response.message || "Failed to save general information",
+				});
+			}
+		} catch (error) {
+			console.error("Error saving general information:", error);
+			setSaveResult({
+				success: false,
+				message:
+					error instanceof Error
+						? error.message
+						: "Failed to save general information",
+			});
+		} finally {
+			setIsSaving(false);
+		}
 	};
 
 	return (
@@ -1334,6 +1393,34 @@ AgMBAAE=
 						</p>
 					)}
 				</div>
+			</div>
+
+			{/* Save Button and Result */}
+			<div className="space-y-4 pt-6 border-t border-gray-200">
+				<div className="flex justify-center">
+					<Button
+						onClick={handleSaveGeneralInfo}
+						disabled={isSaving || !currentToken?.token}
+						className="bg-blue-600 hover:bg-blue-700 px-8 py-2"
+					>
+						{isSaving ? "Saving..." : "Save General Information"}
+					</Button>
+				</div>
+
+				{/* Save Result Display */}
+				{saveResult && (
+					<div
+						className={`p-4 rounded-md ${
+							saveResult.success
+								? "bg-green-50 border border-green-200 text-green-800"
+								: "bg-red-50 border border-red-200 text-red-800"
+						}`}
+					>
+						<p className="text-sm font-medium">
+							{saveResult.success ? "✅" : "❌"} {saveResult.message}
+						</p>
+					</div>
+				)}
 			</div>
 		</div>
 	);
